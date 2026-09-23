@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property AppointmentStatus $status
+ */
 #[Fillable(['patient_id', 'doctor_id', 'start_time', 'end_time', 'status', 'cancellation_reason'])]
 final class Appointment extends Model
 {
