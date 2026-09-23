@@ -1,7 +1,28 @@
 <?php
 
+use App\Http\Controllers\Api\AppointmentController;
+use App\Http\Controllers\Api\AvailabilityController;
+use App\Http\Controllers\Api\DoctorAppointmentController;
+use App\Http\Controllers\Api\DoctorAvailableSlotController;
+use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\Api\PatientAppointmentController;
+use App\Http\Controllers\Api\PatientController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
-    // API routes will be added here in later milestones
+    Route::apiResource('doctors', DoctorController::class);
+    Route::apiResource('patients', PatientController::class);
+    Route::apiResource('availabilities', AvailabilityController::class);
+    Route::apiResource('appointments', AppointmentController::class);
+
+    Route::apiResource('doctors.appointments', DoctorAppointmentController::class)
+        ->only(['index'])
+        ->parameters(['doctors.appointments' => 'doctor']);
+
+    Route::apiResource('patients.appointments', PatientAppointmentController::class)
+        ->only(['index'])
+        ->parameters(['patients.appointments' => 'patient']);
+
+    Route::get('doctors/{doctor}/available-slots', [DoctorAvailableSlotController::class, 'index'])
+        ->name('doctors.available-slots');
 });
