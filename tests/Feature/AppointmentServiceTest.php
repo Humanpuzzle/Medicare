@@ -225,9 +225,40 @@ final class AppointmentServiceTest extends TestCase
         ]);
     }
 
-    public function test_appointment_duration_not_multiple_of_slot_duration_rejected(): void
+    public function test_variable_appointment_durations_accepted(): void
     {
-        $this->markTestIncomplete('Variable-duration model: appointment duration no longer needs to be multiple of slot_duration');
+        $baseDate = CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC');
+        $startsAt = $baseDate;
+        $endsAt = $startsAt->addHours(3); // 09:00-12:00
+
+        // Test variable appointment durations that are valid
+        $validDurations = [
+            [CarbonImmutable::parse('2026-10-15 09:15:00', 'UTC'), CarbonImmutable::parse('2026-10-15 10:00:00', 'UTC')], // 45 min
+            [CarbonImmutable::parse('2026-10-15 10:00:00', 'UTC'), CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC')], // 60 min
+            [CarbonImmutable::parse('2026-10-15 10:15:00', 'UTC'), CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC')], // 45 min
+            [CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'), CarbonImmutable::parse('2026-10-15 12:00:00', 'UTC')], // 60 min
+            [CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'), CarbonImmutable::parse('2026-10-15 10:15:00', 'UTC')], // 75 min
+            [CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'), CarbonImmutable::parse('2026-10-15 10:45:00', 'UTC')], // 105 min
+        ];
+
+        foreach ($validDurations as [$start, $end]) {
+            $doctor = Doctor::factory()->create();
+            $patient = Patient::factory()->create();
+
+            $availability = Availability::factory()->create([
+                'doctor_id' => $doctor->id,
+                'starts_at' => $baseDate,
+                'ends_at' => $baseDate->addHours(3),
+            ]);
+
+            $appointment = $this->service->create([
+                'patient_id' => Patient::factory()->create()->id,
+                'doctor_id' => $doctor->id,
+                'start_time' => $start,
+                'end_time' => $end,
+            ]);
+            $this->assertInstanceOf(Appointment::class, $appointment);
+        }
     }
 
     public function test_doctor_conflict_overlap_rejected(): void

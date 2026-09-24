@@ -120,14 +120,23 @@ final class AvailabilityServiceTest extends TestCase
         $this->assertInstanceOf(Availability::class, $availability);
     }
 
-    public function test_invalid_slot_duration_is_rejected(): void
+    public function test_availability_contains_only_domain_fields(): void
     {
-        $this->markTestIncomplete('Variable-duration model: slot_duration no longer exists on availability');
-    }
+        $doctor = Doctor::factory()->create();
+        $startsAt = CarbonImmutable::now('UTC')->addDay()->setTime(9, 0, 0);
+        $endsAt = $startsAt->addHours(2);
 
-    public function test_valid_slot_duration_is_accepted(): void
-    {
-        $this->markTestIncomplete('Variable-duration model: slot_duration no longer exists on availability');
+        $availability = $this->service->create([
+            'doctor_id' => $doctor->id,
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
+        ]);
+
+        $this->assertInstanceOf(Availability::class, $availability);
+        $this->assertEquals($doctor->id, $availability->doctor_id);
+        $this->assertEquals($startsAt, $availability->starts_at);
+        $this->assertEquals($endsAt, $availability->ends_at);
+        $this->assertNull($availability->slot_duration ?? null);
     }
 
     public function test_overlapping_availability_is_rejected(): void
