@@ -258,7 +258,50 @@ final class AppointmentApiTest extends TestCase
 
     public function test_24_hour_cancellation_rule_exposed_via_http(): void
     {
-        $this->markTestIncomplete('Requires time manipulation for 24-hour boundary test');
+        CarbonImmutable::setTestNow('2026-10-15 10:00:00');
+
+        $doctor = Doctor::factory()->create();
+        $patient = Patient::factory()->create();
+
+        // Appointment starts in 25 hours (2026-10-16 11:00:00)
+        $startsAt = CarbonImmutable::create(2026, 10, 16, 11, 0, 0, 'UTC');
+        $endsAt = $startsAt->addHour();
+
+        $availability = Availability::factory()->create([
+            'doctor_id' => $doctor->id,
+            'starts_at' => $startsAt->subHours(2),
+            'ends_at' => $startsAt->addHours(2),
+            'slot_duration' => 60,
+        ]);
+
+        // Create appointment via API
+        $response = $this->postJson('/api/v1/appointments', [
+            'patient_id' => $patient->id,
+            'doctor_id' => $doctor->id,
+            'start_time' => $startsAt->toIso8601String(),
+            'end_time' => $endsAt->toIso8601String(),
+        ]);
+        $response->assertStatus(201);
+        $appointmentId = $response->json('data.id');
+
+        // Confirm the appointment
+        $response = $this->patchJson("/api/v1/appointments/{$appointmentId}/status", [
+            'status' => 'confirmed',
+        ]);
+        $response->assertStatus(200);
+
+        // At exactly 24 hours before (2026-10-15 11:00:00), cancellation should be allowed
+        CarbonImmutable::setTestNow('2026-10-15 11:00:00');
+
+        $cancelResponse = $this->postJson("/api/v1/appointments/{$appointmentId}/cancel", [
+            'cancellation_reason' => 'Patient requested',
+        ]);
+
+        $cancelResponse->assertStatus(200)
+            ->assertJsonFragment([
+                'status' => 'cancelled',
+                'cancellation_reason' => 'Patient requested',
+            ]);
     }
 
     public function test_404_for_unknown_appointment(): void
