@@ -50,6 +50,18 @@ final class AvailabilityService
             $endsAt = $data['ends_at'] ?? $availability->ends_at;
             $slotDuration = $data['slot_duration'] ?? $availability->slot_duration;
 
+            // Ensure CarbonImmutable for validation
+            if (! $startsAt instanceof CarbonImmutable) {
+                $startsAt = is_string($startsAt)
+                    ? CarbonImmutable::parse($startsAt)
+                    : CarbonImmutable::instance($startsAt);
+            }
+            if (! $endsAt instanceof CarbonImmutable) {
+                $endsAt = is_string($endsAt)
+                    ? CarbonImmutable::parse($endsAt)
+                    : CarbonImmutable::instance($endsAt);
+            }
+
             $this->validateAvailabilityData([
                 'doctor_id' => $availability->doctor_id,
                 'starts_at' => $startsAt,

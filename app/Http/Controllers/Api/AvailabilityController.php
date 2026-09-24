@@ -23,8 +23,12 @@ final class AvailabilityController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
-        $perPage = min((int) $request->get('per_page', 25), 100);
+        $perPage = (int) $request->get('per_page', 25);
         $page = max((int) $request->get('page', 1), 1);
+
+        if ($perPage < 1 || $perPage > 100) {
+            abort(422, 'The per_page parameter must be between 1 and 100.');
+        }
 
         $query = Availability::query()->with('doctor')->orderBy('starts_at');
 
@@ -58,10 +62,14 @@ final class AvailabilityController extends Controller
         $data = $request->validated();
 
         if (isset($data['starts_at'])) {
-            $data['starts_at'] = CarbonImmutable::parse($data['starts_at']);
+            $data['starts_at'] = $data['starts_at'] instanceof CarbonImmutable
+                ? $data['starts_at']
+                : CarbonImmutable::parse($data['starts_at']);
         }
         if (isset($data['ends_at'])) {
-            $data['ends_at'] = CarbonImmutable::parse($data['ends_at']);
+            $data['ends_at'] = $data['ends_at'] instanceof CarbonImmutable
+                ? $data['ends_at']
+                : CarbonImmutable::parse($data['ends_at']);
         }
 
         $availability = $this->availabilityService->update($availability, $data);

@@ -24,8 +24,12 @@ final class AppointmentController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
-        $perPage = min((int) $request->get('per_page', 25), 100);
+        $perPage = (int) $request->get('per_page', 25);
         $page = max((int) $request->get('page', 1), 1);
+
+        if ($perPage < 1 || $perPage > 100) {
+            abort(422, 'The per_page parameter must be between 1 and 100.');
+        }
 
         $query = Appointment::query()
             ->with(['doctor', 'patient'])
@@ -65,7 +69,7 @@ final class AppointmentController extends Controller
         return new AppointmentResource($appointment->load(['doctor', 'patient']));
     }
 
-    public function update(UpdateAppointmentStatusRequest $request, Appointment $appointment): AppointmentResource
+    public function updateStatus(UpdateAppointmentStatusRequest $request, Appointment $appointment): AppointmentResource
     {
         $data = $request->validated();
         $status = AppointmentStatus::from($data['status']);

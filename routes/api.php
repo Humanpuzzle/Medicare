@@ -13,7 +13,12 @@ Route::prefix('v1')->group(function (): void {
     Route::apiResource('doctors', DoctorController::class);
     Route::apiResource('patients', PatientController::class);
     Route::apiResource('availabilities', AvailabilityController::class);
-    Route::apiResource('appointments', AppointmentController::class);
+
+    Route::get('appointments', [AppointmentController::class, 'index']);
+    Route::post('appointments', [AppointmentController::class, 'store']);
+    Route::get('appointments/{appointment}', [AppointmentController::class, 'show']);
+    Route::patch('appointments/{appointment}/status', [AppointmentController::class, 'updateStatus']);
+    Route::post('appointments/{appointment}/cancel', [AppointmentController::class, 'cancel']);
 
     Route::apiResource('doctors.appointments', DoctorAppointmentController::class)
         ->only(['index'])
