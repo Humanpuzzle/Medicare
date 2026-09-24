@@ -19,7 +19,6 @@ final class StoreAvailabilityRequest extends FormRequest
             'doctor_id' => ['required', 'integer', 'exists:doctors,id'],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['required', 'date', 'after:starts_at'],
-            'slot_duration' => ['required', 'integer', 'min:30'],
         ];
     }
 }

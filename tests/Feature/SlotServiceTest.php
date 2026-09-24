@@ -10,7 +10,6 @@ use App\Models\Availability;
 use App\Models\Doctor;
 use App\Models\Patient;
 use App\Services\SlotService;
-use App\Services\SlotService\Slot;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -27,108 +26,55 @@ final class SlotServiceTest extends TestCase
         $this->service = new SlotService;
     }
 
-    public function test_normal_slot_generation(): void
+    public function test_normal_start_time_generation(): void
     {
         $doctor = Doctor::factory()->create();
         $availability = Availability::factory()->create([
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        $slots = $this->service->generateSlotsFromAvailability($availability);
+        $slots = $this->service->generateStartTimesFromAvailability($availability);
 
-        $this->assertCount(4, $slots);
+        $this->assertCount(7, $slots);
         $this->assertEquals('2026-10-15T09:00:00+00:00', $slots[0]->startsAt->toIso8601String());
-        $this->assertEquals('2026-10-15T09:30:00+00:00', $slots[0]->endsAt->toIso8601String());
-        $this->assertEquals('2026-10-15T09:30:00+00:00', $slots[1]->startsAt->toIso8601String());
-        $this->assertEquals('2026-10-15T10:00:00+00:00', $slots[1]->endsAt->toIso8601String());
-        $this->assertEquals('2026-10-15T10:00:00+00:00', $slots[2]->startsAt->toIso8601String());
-        $this->assertEquals('2026-10-15T10:30:00+00:00', $slots[2]->endsAt->toIso8601String());
-        $this->assertEquals('2026-10-15T10:30:00+00:00', $slots[3]->startsAt->toIso8601String());
-        $this->assertEquals('2026-10-15T11:00:00+00:00', $slots[3]->endsAt->toIso8601String());
+        $this->assertEquals('2026-10-15T09:15:00+00:00', $slots[1]->startsAt->toIso8601String());
+        $this->assertEquals('2026-10-15T09:30:00+00:00', $slots[2]->startsAt->toIso8601String());
+        $this->assertEquals('2026-10-15T09:45:00+00:00', $slots[3]->startsAt->toIso8601String());
+        $this->assertEquals('2026-10-15T10:00:00+00:00', $slots[4]->startsAt->toIso8601String());
+        $this->assertEquals('2026-10-15T10:15:00+00:00', $slots[5]->startsAt->toIso8601String());
+        $this->assertEquals('2026-10-15T10:30:00+00:00', $slots[6]->startsAt->toIso8601String());
     }
 
-    public function test_first_slot_matches_availability_start(): void
+    public function test_first_start_time_matches_availability_start(): void
     {
         $doctor = Doctor::factory()->create();
         $availability = Availability::factory()->create([
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:15:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 10:15:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        $slots = $this->service->generateSlotsFromAvailability($availability);
+        $slots = $this->service->generateStartTimesFromAvailability($availability);
 
         $this->assertEquals('2026-10-15T09:15:00+00:00', $slots[0]->startsAt->toIso8601String());
     }
 
-    public function test_no_slot_at_availability_end(): void
+    public function test_no_start_time_at_availability_end(): void
     {
         $doctor = Doctor::factory()->create();
         $availability = Availability::factory()->create([
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 10:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        $slots = $this->service->generateSlotsFromAvailability($availability);
+        $slots = $this->service->generateStartTimesFromAvailability($availability);
 
-        // Should have 2 slots: 09:00-09:30 and 09:30-10:00
-        // No slot at 10:00 (availability end)
-        $this->assertCount(2, $slots);
+        $this->assertCount(3, $slots);
         $lastSlot = $slots[count($slots) - 1];
-        $this->assertEquals('2026-10-15T10:00:00+00:00', $lastSlot->endsAt->toIso8601String());
-        $this->assertNotEquals('2026-10-15T10:00:00+00:00', $lastSlot->startsAt->toIso8601String());
-    }
-
-    public function test_slot_duration_handling(): void
-    {
-        $doctor = Doctor::factory()->create();
-        $availability = Availability::factory()->create([
-            'doctor_id' => $doctor->id,
-            'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
-            'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 60, // 60 minutes
-        ]);
-
-        $slots = $this->service->generateSlotsFromAvailability($availability);
-
-        // 2 hours / 60 minutes = 2 slots
-        $this->assertCount(2, $slots);
-        $this->assertEquals(60, $slots[0]->slotDuration);
-        $this->assertEquals('2026-10-15T09:00:00+00:00', $slots[0]->startsAt->toIso8601String());
-        $this->assertEquals('2026-10-15T10:00:00+00:00', $slots[0]->endsAt->toIso8601String());
-        $this->assertEquals('2026-10-15T10:00:00+00:00', $slots[1]->startsAt->toIso8601String());
-        $this->assertEquals('2026-10-15T11:00:00+00:00', $slots[1]->endsAt->toIso8601String());
-    }
-
-    public function test_correct_number_of_generated_starts(): void
-    {
-        $doctor = Doctor::factory()->create();
-
-        // 30 min slots, 2 hours = 4 slots
-        $availability = Availability::factory()->create([
-            'doctor_id' => $doctor->id,
-            'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
-            'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
-        ]);
-        $slots = $this->service->generateSlotsFromAvailability($availability);
-        $this->assertCount(4, $slots);
-
-        // 45 min slots, 3 hours = 4 slots (9:00-9:45, 9:45-10:30, 10:30-11:15, 11:15-12:00)
-        $availability2 = Availability::factory()->create([
-            'doctor_id' => $doctor->id,
-            'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
-            'ends_at' => CarbonImmutable::parse('2026-10-15 12:00:00', 'UTC'),
-            'slot_duration' => 45,
-        ]);
-        $slots2 = $this->service->generateSlotsFromAvailability($availability2);
-        $this->assertCount(4, $slots2);
+        $this->assertEquals('2026-10-15T09:30:00+00:00', $lastSlot->startsAt->toIso8601String());
     }
 
     public function test_utc_datetime_correctness(): void
@@ -138,18 +84,16 @@ final class SlotServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        $slots = $this->service->generateSlotsFromAvailability($availability);
+        $slots = $this->service->generateStartTimesFromAvailability($availability);
 
         foreach ($slots as $slot) {
             $this->assertEquals('UTC', $slot->startsAt->getTimezone()->getName());
-            $this->assertEquals('UTC', $slot->endsAt->getTimezone()->getName());
         }
     }
 
-    public function test_occupied_slot_is_excluded(): void
+    public function test_occupied_start_time_is_excluded(): void
     {
         $doctor = Doctor::factory()->create();
         $patient = Patient::factory()->create();
@@ -157,13 +101,11 @@ final class SlotServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        // Create an appointment that blocks the 09:30-10:00 slot
         Appointment::factory()->create([
             'doctor_id' => $doctor->id,
-            'patient_id' => $patient->id,
+            'patient_id' => Patient::factory()->create()->id,
             'start_time' => CarbonImmutable::parse('2026-10-15 09:30:00', 'UTC'),
             'end_time' => CarbonImmutable::parse('2026-10-15 10:00:00', 'UTC'),
             'status' => AppointmentStatus::Confirmed,
@@ -175,32 +117,28 @@ final class SlotServiceTest extends TestCase
             'to' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
         ]);
 
-        $this->assertCount(4, $slots);
-        // 09:00 slot should be available
-        $this->assertTrue($slots[0]->isAvailable);
-        // 09:30 slot should NOT be available (blocked by appointment)
-        $this->assertFalse($slots[1]->isAvailable);
-        // 10:00 slot should be available
-        $this->assertTrue($slots[2]->isAvailable);
-        // 10:30 slot should be available
-        $this->assertTrue($slots[3]->isAvailable);
+        $this->assertCount(7, $slots);
+        $this->assertTrue($slots[0]->isAvailable);   // 09:00
+        $this->assertFalse($slots[1]->isAvailable);  // 09:15
+        $this->assertFalse($slots[2]->isAvailable);  // 09:30
+        $this->assertFalse($slots[3]->isAvailable);  // 09:45
+        $this->assertTrue($slots[4]->isAvailable);   // 10:00
+        $this->assertTrue($slots[5]->isAvailable);   // 10:15
+        $this->assertTrue($slots[6]->isAvailable);   // 10:30
     }
 
-    public function test_free_slot_remains_available(): void
+    public function test_free_start_time_remains_available(): void
     {
         $doctor = Doctor::factory()->create();
-        $patient = Patient::factory()->create();
         $availability = Availability::factory()->create([
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        // Create an appointment that does NOT block any slot (outside availability)
         Appointment::factory()->create([
             'doctor_id' => $doctor->id,
-            'patient_id' => $patient->id,
+            'patient_id' => Patient::factory()->create()->id,
             'start_time' => CarbonImmutable::parse('2026-10-15 14:00:00', 'UTC'),
             'end_time' => CarbonImmutable::parse('2026-10-15 15:00:00', 'UTC'),
             'status' => AppointmentStatus::Confirmed,
@@ -212,27 +150,24 @@ final class SlotServiceTest extends TestCase
             'to' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
         ]);
 
-        $this->assertCount(4, $slots);
+        $this->assertCount(7, $slots);
         foreach ($slots as $slot) {
             $this->assertTrue($slot->isAvailable);
         }
     }
 
-    public function test_adjacent_appointment_does_not_block_slot(): void
+    public function test_adjacent_appointment_does_not_block_start_time(): void
     {
         $doctor = Doctor::factory()->create();
-        $patient = Patient::factory()->create();
         $availability = Availability::factory()->create([
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        // Appointment ends exactly when slot starts (adjacent - should NOT block)
         Appointment::factory()->create([
             'doctor_id' => $doctor->id,
-            'patient_id' => $patient->id,
+            'patient_id' => Patient::factory()->create()->id,
             'start_time' => CarbonImmutable::parse('2026-10-15 08:30:00', 'UTC'),
             'end_time' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'status' => AppointmentStatus::Confirmed,
@@ -244,26 +179,22 @@ final class SlotServiceTest extends TestCase
             'to' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
         ]);
 
-        $this->assertCount(4, $slots);
-        // 09:00 slot should be available (adjacent appointment ends at 09:00)
+        $this->assertCount(7, $slots);
         $this->assertTrue($slots[0]->isAvailable);
     }
 
-    public function test_appointment_starting_when_slot_ends_does_not_block(): void
+    public function test_appointment_starting_when_proposed_ends_does_not_block(): void
     {
         $doctor = Doctor::factory()->create();
-        $patient = Patient::factory()->create();
         $availability = Availability::factory()->create([
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        // Appointment starts exactly when slot ends (adjacent - should NOT block 09:30 slot)
         Appointment::factory()->create([
             'doctor_id' => $doctor->id,
-            'patient_id' => $patient->id,
+            'patient_id' => Patient::factory()->create()->id,
             'start_time' => CarbonImmutable::parse('2026-10-15 10:00:00', 'UTC'),
             'end_time' => CarbonImmutable::parse('2026-10-15 10:30:00', 'UTC'),
             'status' => AppointmentStatus::Confirmed,
@@ -275,34 +206,29 @@ final class SlotServiceTest extends TestCase
             'to' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
         ]);
 
-        // 09:30 slot should be available (appointment starts at 10:00, slot ends at 10:00)
-        $this->assertTrue($slots[1]->isAvailable);
+        $this->assertTrue($slots[2]->isAvailable);
     }
 
-    public function test_only_pending_and_confirmed_appointments_block_slots(): void
+    public function test_only_pending_and_confirmed_appointments_block_start_times(): void
     {
         $doctor = Doctor::factory()->create();
-        $patient = Patient::factory()->create();
         $availability = Availability::factory()->create([
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        // Cancelled appointment should NOT block
         Appointment::factory()->create([
             'doctor_id' => $doctor->id,
-            'patient_id' => $patient->id,
+            'patient_id' => Patient::factory()->create()->id,
             'start_time' => CarbonImmutable::parse('2026-10-15 09:30:00', 'UTC'),
             'end_time' => CarbonImmutable::parse('2026-10-15 10:00:00', 'UTC'),
             'status' => AppointmentStatus::Cancelled,
         ]);
 
-        // Completed appointment should NOT block
         Appointment::factory()->create([
             'doctor_id' => $doctor->id,
-            'patient_id' => $patient->id,
+            'patient_id' => Patient::factory()->create()->id,
             'start_time' => CarbonImmutable::parse('2026-10-15 10:00:00', 'UTC'),
             'end_time' => CarbonImmutable::parse('2026-10-15 10:30:00', 'UTC'),
             'status' => AppointmentStatus::Completed,
@@ -314,8 +240,7 @@ final class SlotServiceTest extends TestCase
             'to' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
         ]);
 
-        $this->assertCount(4, $slots);
-        // All slots should be available since cancelled/completed don't block
+        $this->assertCount(7, $slots);
         foreach ($slots as $slot) {
             $this->assertTrue($slot->isAvailable);
         }
@@ -325,69 +250,61 @@ final class SlotServiceTest extends TestCase
     {
         $doctor1 = Doctor::factory()->create();
         $doctor2 = Doctor::factory()->create();
-        $patient = Patient::factory()->create();
 
-        $availability1 = Availability::factory()->create([
+        Availability::factory()->create([
             'doctor_id' => $doctor1->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        $availability2 = Availability::factory()->create([
+        Availability::factory()->create([
             'doctor_id' => $doctor2->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
-        // Get slots for doctor1 only
         $slots = $this->service->getAvailableSlots([
             'doctor_id' => $doctor1->id,
             'from' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'to' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
         ]);
 
-        $this->assertCount(4, $slots);
+        $this->assertCount(7, $slots);
 
-        // Get slots for doctor2 only
         $slots2 = $this->service->getAvailableSlots([
             'doctor_id' => $doctor2->id,
             'from' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'to' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
         ]);
 
-        $this->assertCount(4, $slots2);
+        $this->assertCount(7, $slots2);
     }
 
     public function test_date_range_filtering(): void
     {
         $doctor = Doctor::factory()->create();
-        $availability = Availability::factory()->create([
+        Availability::factory()->create([
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
-            'ends_at' => CarbonImmutable::parse('2026-10-15 17:00:00', 'UTC'), // 8 hours
-            'slot_duration' => 60, // 60 min slots = 8 slots
+            'ends_at' => CarbonImmutable::parse('2026-10-15 17:00:00', 'UTC'),
         ]);
 
-        // Request only morning (09:00-13:00)
         $slots = $this->service->getAvailableSlots([
             'doctor_id' => $doctor->id,
             'from' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'to' => CarbonImmutable::parse('2026-10-15 13:00:00', 'UTC'),
         ]);
 
-        $this->assertCount(4, $slots); // 4 hours / 60 min = 4 slots
+        $this->assertCount(15, $slots);
     }
 
-    public function test_get_available_slots_for_doctor_on_date(): void
+    public function test_get_available_start_times_for_doctor_on_date(): void
     {
         $doctor = Doctor::factory()->create();
-        $availability = Availability::factory()->create([
+        Availability::factory()->create([
             'doctor_id' => $doctor->id,
             'starts_at' => CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC'),
             'ends_at' => CarbonImmutable::parse('2026-10-15 11:00:00', 'UTC'),
-            'slot_duration' => 30,
         ]);
 
         $slots = $this->service->getAvailableSlotsForDoctorOnDate(
@@ -395,6 +312,6 @@ final class SlotServiceTest extends TestCase
             CarbonImmutable::parse('2026-10-15', 'UTC')
         );
 
-        $this->assertCount(4, $slots);
+        $this->assertCount(7, $slots);
     }
 }

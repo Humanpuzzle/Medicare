@@ -19,7 +19,6 @@ final class UpdateAvailabilityRequest extends FormRequest
             'doctor_id' => ['sometimes', 'integer', 'exists:doctors,id'],
             'starts_at' => ['sometimes', 'date'],
             'ends_at' => ['sometimes', 'date'],
-            'slot_duration' => ['sometimes', 'integer', 'min:30'],
         ];
     }
 }

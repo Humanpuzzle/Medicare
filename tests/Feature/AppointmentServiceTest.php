@@ -227,26 +227,7 @@ final class AppointmentServiceTest extends TestCase
 
     public function test_appointment_duration_not_multiple_of_slot_duration_rejected(): void
     {
-        $doctor = Doctor::factory()->create();
-        $patient = Patient::factory()->create();
-        $startsAt = CarbonImmutable::now('UTC')->addDay()->setTime(9, 0, 0);
-        $endsAt = $startsAt->addMinutes(45); // 45 minutes, not multiple of 30
-
-        $availability = Availability::factory()->create([
-            'doctor_id' => $doctor->id,
-            'starts_at' => $startsAt,
-            'ends_at' => $startsAt->addHours(2),
-            'slot_duration' => 30,
-        ]);
-
-        $this->expectException(\InvalidArgumentException::class);
-
-        $this->service->create([
-            'patient_id' => $patient->id,
-            'doctor_id' => $doctor->id,
-            'start_time' => $startsAt->setTime(9, 0, 0),
-            'end_time' => $startsAt->addMinutes(45),
-        ]);
+        $this->markTestIncomplete('Variable-duration model: appointment duration no longer needs to be multiple of slot_duration');
     }
 
     public function test_doctor_conflict_overlap_rejected(): void

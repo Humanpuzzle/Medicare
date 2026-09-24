@@ -28,7 +28,6 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         Appointment::factory()->count(3)->create([
@@ -62,7 +61,6 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $appointment = Appointment::factory()->create([
@@ -96,7 +94,6 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $response = $this->postJson('/api/v1/appointments', [
@@ -139,7 +136,6 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         // Create first appointment
@@ -173,7 +169,6 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $appointment = Appointment::factory()->create([
@@ -204,7 +199,6 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $appointment = Appointment::factory()->create([
@@ -234,7 +228,6 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $appointment = Appointment::factory()->create([
@@ -323,13 +316,11 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor1->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
         $availability2 = Availability::factory()->create([
             'doctor_id' => $doctor2->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         Appointment::factory()->create([
@@ -364,7 +355,6 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         Appointment::factory()->create([
@@ -398,7 +388,6 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         Appointment::factory()->create([
@@ -434,7 +423,6 @@ final class AppointmentApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         Appointment::factory()->count(30)->create([

@@ -24,7 +24,6 @@ final class AvailabilityApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $response = $this->getJson('/api/v1/availabilities');
@@ -32,7 +31,7 @@ final class AvailabilityApiTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'doctor_id', 'starts_at', 'ends_at', 'slot_duration', 'created_at', 'updated_at'],
+                    '*' => ['id', 'doctor_id', 'starts_at', 'ends_at', 'created_at', 'updated_at'],
                 ],
                 'links',
                 'meta',
@@ -50,7 +49,6 @@ final class AvailabilityApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $response = $this->getJson("/api/v1/availabilities/{$availability->id}");
@@ -60,7 +58,6 @@ final class AvailabilityApiTest extends TestCase
                 'data' => [
                     'id' => $availability->id,
                     'doctor_id' => $doctor->id,
-                    'slot_duration' => 30,
                 ],
             ]);
     }
@@ -75,13 +72,11 @@ final class AvailabilityApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt->toIso8601String(),
             'ends_at' => $endsAt->toIso8601String(),
-            'slot_duration' => 30,
         ]);
 
         $response->assertStatus(201)
             ->assertJsonFragment([
                 'doctor_id' => $doctor->id,
-                'slot_duration' => 30,
             ]);
 
         $this->assertDatabaseHas('availabilities', ['doctor_id' => $doctor->id]);
@@ -106,7 +101,6 @@ final class AvailabilityApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt->toIso8601String(),
             'ends_at' => $endsAt->toIso8601String(),
-            'slot_duration' => 30,
         ])->assertStatus(201);
 
         // Try to create overlapping availability
@@ -114,7 +108,6 @@ final class AvailabilityApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt->addMinutes(30)->toIso8601String(),
             'ends_at' => $endsAt->addMinutes(30)->toIso8601String(),
-            'slot_duration' => 30,
         ]);
 
         $response->assertStatus(409)
@@ -131,7 +124,6 @@ final class AvailabilityApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $newEndsAt = $startsAt->addHours(3);
@@ -140,12 +132,8 @@ final class AvailabilityApiTest extends TestCase
             'ends_at' => $newEndsAt->toIso8601String(),
         ]);
 
-        $response->assertStatus(200)
-            ->assertJson([
-                'data' => [
-                    'ends_at' => $newEndsAt->toIso8601String(),
-                ],
-            ]);
+        $response->assertStatus(200);
+        $this->assertEquals($newEndsAt->toIso8601String(), $response->json('data.ends_at'));
     }
 
     public function test_delete_availability(): void
@@ -158,7 +146,6 @@ final class AvailabilityApiTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $response = $this->deleteJson("/api/v1/availabilities/{$availability->id}");
@@ -186,13 +173,11 @@ final class AvailabilityApiTest extends TestCase
             'doctor_id' => $doctor1->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
         Availability::factory()->create([
             'doctor_id' => $doctor2->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $response = $this->getJson("/api/v1/availabilities?doctor_id={$doctor1->id}");

@@ -33,14 +33,12 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $this->assertInstanceOf(Availability::class, $availability);
         $this->assertEquals($doctor->id, $availability->doctor_id);
         $this->assertEquals($startsAt, $availability->starts_at);
         $this->assertEquals($endsAt, $availability->ends_at);
-        $this->assertEquals(30, $availability->slot_duration);
     }
 
     public function test_past_availability_is_rejected(): void
@@ -56,7 +54,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
     }
 
@@ -73,7 +70,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
     }
 
@@ -90,7 +86,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
     }
 
@@ -107,7 +102,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
     }
 
@@ -121,7 +115,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $this->assertInstanceOf(Availability::class, $availability);
@@ -129,38 +122,12 @@ final class AvailabilityServiceTest extends TestCase
 
     public function test_invalid_slot_duration_is_rejected(): void
     {
-        $doctor = Doctor::factory()->create();
-        $startsAt = CarbonImmutable::now('UTC')->addDay()->setTime(9, 0, 0);
-        $endsAt = $startsAt->addHours(2);
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Slot duration must be a positive integer of at least 30 minutes.');
-
-        $this->service->create([
-            'doctor_id' => $doctor->id,
-            'starts_at' => $startsAt,
-            'ends_at' => $endsAt,
-            'slot_duration' => 15, // Less than 30
-        ]);
+        $this->markTestIncomplete('Variable-duration model: slot_duration no longer exists on availability');
     }
 
     public function test_valid_slot_duration_is_accepted(): void
     {
-        // Various valid slot durations - use different doctors for each to avoid overlap
-        foreach ([30, 45, 60, 90, 120] as $slotDuration) {
-            $doctor = Doctor::factory()->create();
-            $startsAt = CarbonImmutable::now('UTC')->addDay()->setTime(9, 0, 0);
-            $endsAt = $startsAt->addHours(2);
-
-            $availability = $this->service->create([
-                'doctor_id' => $doctor->id,
-                'starts_at' => $startsAt,
-                'ends_at' => $endsAt,
-                'slot_duration' => $slotDuration,
-            ]);
-
-            $this->assertEquals($slotDuration, $availability->slot_duration);
-        }
+        $this->markTestIncomplete('Variable-duration model: slot_duration no longer exists on availability');
     }
 
     public function test_overlapping_availability_is_rejected(): void
@@ -174,7 +141,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         // Try to create overlapping availability (partial overlap at beginning)
@@ -185,7 +151,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt->addMinutes(30),
             'ends_at' => $endsAt->addMinutes(30),
-            'slot_duration' => 30,
         ]);
     }
 
@@ -199,7 +164,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         // Overlap at end
@@ -208,7 +172,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt->subMinutes(30),
             'ends_at' => $endsAt->subMinutes(30),
-            'slot_duration' => 30,
         ]);
     }
 
@@ -222,7 +185,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $this->expectException(\InvalidArgumentException::class);
@@ -230,7 +192,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt->addHour(),
             'ends_at' => $endsAt->subHour(),
-            'slot_duration' => 30,
         ]);
     }
 
@@ -244,7 +205,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $this->expectException(\InvalidArgumentException::class);
@@ -252,7 +212,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt->subHour(),
             'ends_at' => $endsAt->addHour(),
-            'slot_duration' => 30,
         ]);
     }
 
@@ -266,7 +225,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $this->expectException(\InvalidArgumentException::class);
@@ -274,7 +232,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt, // Same start
             'ends_at' => $endsAt->addHour(),
-            'slot_duration' => 30,
         ]);
     }
 
@@ -288,7 +245,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         // Adjacent before: ends exactly when existing starts
@@ -296,7 +252,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt->subHours(2),
             'ends_at' => $startsAt, // Ends exactly at existing start
-            'slot_duration' => 30,
         ]);
 
         $this->assertInstanceOf(Availability::class, $availability);
@@ -312,7 +267,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         // Adjacent after: starts exactly when existing ends
@@ -320,7 +274,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $endsAt, // Starts exactly at existing end
             'ends_at' => $endsAt->addHours(2),
-            'slot_duration' => 30,
         ]);
 
         $this->assertInstanceOf(Availability::class, $availability);
@@ -337,7 +290,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor1->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         // Different doctor - should be allowed
@@ -345,7 +297,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor2->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $this->assertInstanceOf(Availability::class, $availability);
@@ -361,14 +312,12 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $availability2 = $this->service->create([
             'doctor_id' => $doctor->id,
             'starts_at' => $endsAt,
             'ends_at' => $endsAt->addHours(2),
-            'slot_duration' => 30,
         ]);
 
         // Try to update availability2 to overlap with availability1
@@ -389,17 +338,16 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         // Update to same times (should not conflict with itself)
         $updated = $this->service->update($availability, [
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 45,
         ]);
 
-        $this->assertEquals(45, $updated->slot_duration);
+        $this->assertEquals($startsAt, $updated->starts_at);
+        $this->assertEquals($endsAt, $updated->ends_at);
     }
 
     public function test_availability_delete_soft_deletes(): void
@@ -412,7 +360,6 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => 30,
         ]);
 
         $this->service->delete($availability);
@@ -429,14 +376,12 @@ final class AvailabilityServiceTest extends TestCase
             'doctor_id' => $doctor->id,
             'starts_at' => $base->setTime(14, 0, 0),
             'ends_at' => $base->setTime(16, 0, 0),
-            'slot_duration' => 30,
         ]);
 
         $this->service->create([
             'doctor_id' => $doctor->id,
             'starts_at' => $base->setTime(9, 0, 0),
             'ends_at' => $base->setTime(11, 0, 0),
-            'slot_duration' => 30,
         ]);
 
         $availabilities = $this->service->getByDoctor($doctor->id);

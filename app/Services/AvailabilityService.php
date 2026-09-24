@@ -18,8 +18,7 @@ final class AvailabilityService
      * @param array{
      *     doctor_id: int,
      *     starts_at: CarbonImmutable,
-     *     ends_at: CarbonImmutable,
-     *     slot_duration: int
+     *     ends_at: CarbonImmutable
      * } $data
      */
     public function create(array $data): Availability
@@ -35,7 +34,6 @@ final class AvailabilityService
                 'doctor_id' => $data['doctor_id'],
                 'starts_at' => $data['starts_at'],
                 'ends_at' => $data['ends_at'],
-                'slot_duration' => $data['slot_duration'],
             ]);
         });
     }
@@ -48,7 +46,6 @@ final class AvailabilityService
         return DB::transaction(function () use ($availability, $data): Availability {
             $startsAt = $data['starts_at'] ?? $availability->starts_at;
             $endsAt = $data['ends_at'] ?? $availability->ends_at;
-            $slotDuration = $data['slot_duration'] ?? $availability->slot_duration;
 
             // Ensure CarbonImmutable for validation
             if (! $startsAt instanceof CarbonImmutable) {
@@ -66,7 +63,6 @@ final class AvailabilityService
                 'doctor_id' => $availability->doctor_id,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
-                'slot_duration' => $slotDuration,
             ], $availability->id);
 
             $this->ensureNoOverlap($availability->doctor_id, $startsAt, $endsAt, $availability->id);
@@ -74,7 +70,6 @@ final class AvailabilityService
             $availability->update([
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
-                'slot_duration' => $slotDuration,
             ]);
 
             return $availability->fresh();
@@ -95,15 +90,13 @@ final class AvailabilityService
      * @param array{
      *     doctor_id: int,
      *     starts_at: CarbonImmutable,
-     *     ends_at: CarbonImmutable,
-     *     slot_duration: int
+     *     ends_at: CarbonImmutable
      * } $data
      */
     private function validateAvailabilityData(array $data, ?int $excludeAvailabilityId = null): void
     {
         $startsAt = $data['starts_at'];
         $endsAt = $data['ends_at'];
-        $slotDuration = $data['slot_duration'];
 
         // Start must be before end (strict)
         if ($startsAt->gte($endsAt)) {
@@ -120,11 +113,6 @@ final class AvailabilityService
         $durationMinutes = $startsAt->diffInMinutes($endsAt);
         if ($durationMinutes < 30) {
             throw new \InvalidArgumentException('Availability must be at least 30 minutes long.');
-        }
-
-        // Slot duration must be valid (positive integer, at least 30 per spec)
-        if ($slotDuration < 30) {
-            throw new \InvalidArgumentException('Slot duration must be a positive integer of at least 30 minutes.');
         }
     }
 

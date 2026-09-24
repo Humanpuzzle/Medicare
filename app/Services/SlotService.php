@@ -18,8 +18,6 @@ final class Slot
 {
     public function __construct(
         public readonly CarbonImmutable $startsAt,
-        public readonly CarbonImmutable $endsAt,
-        public readonly int $slotDuration,
         public readonly bool $isAvailable = true,
     ) {}
 
@@ -27,8 +25,6 @@ final class Slot
     {
         return [
             'starts_at' => $this->startsAt->toIso8601String(),
-            'ends_at' => $this->endsAt->toIso8601String(),
-            'slot_duration' => $this->slotDuration,
             'is_available' => $this->isAvailable,
         ];
     }
@@ -37,41 +33,39 @@ final class Slot
 final class SlotService
 {
     /**
-     * Generate slots from an availability period.
+     * Generate valid bookable start times from an availability period.
      *
-     * Slots are generated using the availability's slot_duration.
-     * Each slot represents a bookable appointment start time.
-     * Uses half-open interval [starts_at, ends_at) - no slot at availability end.
+     * Generates 15-minute candidate start times within the availability period.
+     * Only includes start times where at least 30 minutes remain before availability end.
+     * Uses half-open interval [starts_at, ends_at) - no start time at availability end.
      *
      * @return list<Slot>
      */
-    public function generateSlotsFromAvailability(Availability $availability): array
+    public function generateStartTimesFromAvailability(Availability $availability): array
     {
-        $slots = [];
-        $slotDuration = $availability->slot_duration;
         $startsAt = $this->toImmutable($availability->starts_at);
         $endsAt = $this->toImmutable($availability->ends_at);
 
+        $startTimes = [];
         $current = $startsAt;
 
-        while ($current->addMinutes($slotDuration)->lte($endsAt)) {
-            $slotEnd = $current->addMinutes($slotDuration);
-            $slots[] = new Slot(
+        // Generate 15-minute candidate start times
+        // Only include if at least 30 minutes remain before availability end
+        while ($current->addMinutes(30)->lte($endsAt)) {
+            $startTimes[] = new Slot(
                 startsAt: $current,
-                endsAt: $slotEnd,
-                slotDuration: $slotDuration,
-                isAvailable: true
+                isAvailable: true,
             );
-            $current = $slotEnd;
+            $current = $current->addMinutes(15);
         }
 
-        return $slots;
+        return $startTimes;
     }
 
     /**
-     * Get available slots for a doctor within a date range.
+     * Get available start times for a doctor within a date range.
      *
-     * Takes into account existing appointments that would block slots.
+     * Takes into account existing appointments that would block start times.
      *
      * @param array{
      *     doctor_id?: int,
@@ -99,7 +93,7 @@ final class SlotService
 
         $availabilities = $query->get();
 
-        // Get active appointments that could block slots
+        // Get active appointments that could block start times
         // Active appointments: pending, confirmed (not completed, cancelled, or soft deleted)
         $appointmentQuery = Appointment::query()
             ->where('start_time', '<', $to)
@@ -113,28 +107,31 @@ final class SlotService
 
         $appointments = $appointmentQuery->get();
 
-        // Generate slots from each availability and check against appointments
+        // Generate start times from each availability and check against appointments
         $allSlots = [];
 
         foreach ($availabilities as $availability) {
-            $slots = $this->generateSlotsFromAvailability($availability);
+            $slots = $this->generateStartTimesFromAvailability($availability);
 
-            // Filter slots to only those within the requested date range
+            // Filter start times to only those within the requested date range
+            // Also ensure at least 30 minutes remain before the 'to' boundary
             $slots = array_filter($slots, function (Slot $slot) use ($from, $to): bool {
-                return $slot->startsAt->gte($from) && $slot->startsAt->lt($to);
+                return $slot->startsAt->gte($from)
+                    && $slot->startsAt->lt($to)
+                    && $slot->startsAt->addMinutes(30)->lte($to);
             });
 
-            // Mark slots as unavailable if they conflict with existing appointments
+            // Mark start times as unavailable if they would conflict with existing appointments
+            // A start time is blocked if a minimum 30-minute appointment starting at that time
+            // would overlap with an existing appointment
             foreach ($slots as &$slot) {
                 foreach ($appointments as $appointment) {
                     // Only check appointments for the same doctor
                     if ($appointment->doctor_id === $availability->doctor_id) {
-                        if ($this->slotsOverlap($slot, $appointment)) {
+                        if ($this->startTimeConflictsWithAppointment($slot->startsAt, $appointment)) {
                             $slot = new Slot(
                                 startsAt: $slot->startsAt,
-                                endsAt: $slot->endsAt,
-                                slotDuration: $slot->slotDuration,
-                                isAvailable: false
+                                isAvailable: false,
                             );
                             break;
                         }
@@ -149,7 +146,7 @@ final class SlotService
     }
 
     /**
-     * Get available slots for a specific doctor on a specific date.
+     * Get available start times for a specific doctor on a specific date.
      *
      * @return list<Slot>
      */
@@ -166,21 +163,24 @@ final class SlotService
     }
 
     /**
-     * Check if a slot overlaps with an appointment.
+     * Check if a start time would conflict with an appointment.
+     *
+     * A start time conflicts if a minimum 30-minute appointment starting at that time
+     * would overlap with the existing appointment.
      *
      * Uses half-open interval semantics [start, end)
-     * Slot interval: [slot.startsAt, slot.endsAt)
-     * Appointment interval: [appointment.start_time, appointment.end_time)
+     * Proposed appointment: [startTime, startTime + 30 minutes)
+     * Existing appointment: [appointment.start_time, appointment.end_time)
      */
-    private function slotsOverlap(Slot $slot, Appointment $appointment): bool
+    private function startTimeConflictsWithAppointment(CarbonImmutable $startTime, Appointment $appointment): bool
     {
-        $slotStart = $slot->startsAt;
-        $slotEnd = $slot->endsAt;
+        $proposedStart = $startTime;
+        $proposedEnd = $startTime->addMinutes(30); // Minimum 30-minute appointment
         $appointmentStart = $this->toImmutable($appointment->start_time);
         $appointmentEnd = $this->toImmutable($appointment->end_time);
 
-        // Half-open interval overlap: existing.start < new.end AND existing.end > new.start
-        return $appointmentStart->lt($slotEnd) && $appointmentEnd->gt($slotStart);
+        // Half-open interval overlap: proposed.start < existing.end AND proposed.end > existing.start
+        return $proposedStart->lt($appointmentEnd) && $proposedEnd->gt($appointmentStart);
     }
 
     /**

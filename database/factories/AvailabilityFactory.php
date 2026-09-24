@@ -23,7 +23,6 @@ class AvailabilityFactory extends Factory
     public function definition(): array
     {
         $startsAt = fake()->dateTimeBetween('+1 day', '+30 days');
-        $slotDuration = fake()->randomElement([30, 45, 60]);
         $durationMinutes = fake()->randomElement([60, 90, 120, 180]);
         $endsAt = (clone $startsAt)->modify("+{$durationMinutes} minutes");
 
@@ -31,7 +30,6 @@ class AvailabilityFactory extends Factory
             'doctor_id' => Doctor::factory(),
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
-            'slot_duration' => $slotDuration,
         ];
     }
 }

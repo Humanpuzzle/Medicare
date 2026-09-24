@@ -45,9 +45,7 @@ final class DoctorAvailableSlotController extends Controller
         $slotData = array_map(function ($slot) use ($doctor) {
             return (object) [
                 'doctor_id' => $doctor->id,
-                'availability_id' => null,
                 'starts_at' => $slot->startsAt,
-                'ends_at' => $slot->endsAt,
                 'is_available' => $slot->isAvailable,
             ];
         }, $slots);

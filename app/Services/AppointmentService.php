@@ -39,9 +39,9 @@ final class AppointmentService
             $this->ensureFutureAppointment($startTime);
             $this->ensureMinimumDuration($startTime, $endTime);
             $this->ensureFifteenMinuteGrid($startTime);
+            $this->ensureEndTimeOnFifteenMinuteGrid($endTime);
 
             $availability = $this->findContainingAvailability($doctor->id, $startTime, $endTime);
-            $this->ensureDurationMultiple($startTime, $endTime, $availability->slot_duration);
 
             $this->ensureNoDoctorConflict($doctor->id, $startTime, $endTime);
             $this->ensureNoPatientConflict($patient->id, $startTime, $endTime);
@@ -136,6 +136,37 @@ final class AppointmentService
     }
 
     /**
+     * Ensure end time is on 15-minute grid.
+     */
+    private function ensureEndTimeOnFifteenMinuteGrid(CarbonImmutable $endTime): void
+    {
+        $minute = $endTime->minute;
+        $second = $endTime->second;
+        $microsecond = (int) $endTime->format('u');
+
+        if ($minute % 15 !== 0 || $second !== 0 || $microsecond !== 0) {
+            throw new \InvalidArgumentException('The appointment end time must be on a 15-minute grid.');
+        }
+    }
+
+    /**
+     * Find the single availability that contains the appointment.
+     */
+    private function ensureNoDoctorConflict(int $doctorId, CarbonImmutable $startTime, CarbonImmutable $endTime): void
+    {
+        $conflict = Appointment::query()
+            ->where('doctor_id', $doctorId)
+            ->whereIn('status', [AppointmentStatus::Pending, AppointmentStatus::Confirmed])
+            ->where('start_time', '<', $endTime)
+            ->where('end_time', '>', $startTime)
+            ->exists();
+
+        if ($conflict) {
+            throw new \InvalidArgumentException('The doctor already has an appointment during the requested time.');
+        }
+    }
+
+    /**
      * Find the single availability that contains the appointment.
      */
     private function findContainingAvailability(int $doctorId, CarbonImmutable $startTime, CarbonImmutable $endTime): Availability
@@ -154,36 +185,7 @@ final class AppointmentService
     }
 
     /**
-     * Ensure appointment duration is a multiple of availability's slot_duration.
-     */
-    private function ensureDurationMultiple(CarbonImmutable $startTime, CarbonImmutable $endTime, int $slotDuration): void
-    {
-        $durationMinutes = $startTime->diffInMinutes($endTime);
-
-        if ($durationMinutes % $slotDuration !== 0) {
-            throw new \InvalidArgumentException('The appointment duration must be a multiple of the availability slot duration.');
-        }
-    }
-
-    /**
      * Check for doctor conflicts (pending/confirmed appointments).
-     */
-    private function ensureNoDoctorConflict(int $doctorId, CarbonImmutable $startTime, CarbonImmutable $endTime): void
-    {
-        $conflict = Appointment::query()
-            ->where('doctor_id', $doctorId)
-            ->whereIn('status', [AppointmentStatus::Pending, AppointmentStatus::Confirmed])
-            ->where('start_time', '<', $endTime)
-            ->where('end_time', '>', $startTime)
-            ->exists();
-
-        if ($conflict) {
-            throw new \InvalidArgumentException('The doctor already has an appointment during the requested time.');
-        }
-    }
-
-    /**
-     * Check for patient conflicts (pending/confirmed appointments).
      */
     private function ensureNoPatientConflict(int $patientId, CarbonImmutable $startTime, CarbonImmutable $endTime): void
     {
