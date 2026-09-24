@@ -90,7 +90,8 @@ All endpoints are versioned under `/api/v1`:
 | GET | `/api/v1/appointments` | List appointments |
 | POST | `/api/v1/appointments` | Create appointment |
 | GET | `/api/v1/appointments/{appointment}` | Get appointment |
-| PATCH | `/api/v1/appointments/{appointment}` | Update appointment/status |
+| PATCH | `/api/v1/appointments/{appointment}/status` | Update appointment status |
+| POST | `/api/v1/appointments/{appointment}/cancel` | Cancel appointment |
 
 ### Pagination
 
@@ -114,3 +115,88 @@ GET /api/v1/doctors?page=2&per_page=25
 - **/api/v1** — API versioning from the start
 - **No Authentication** — Out of scope for this test
 - **No Repository Pattern** — Direct Eloquent usage in services
+- **Variable Appointment Duration** — Appointments can have any duration >= 30 minutes
+- **15-Minute Grid** — Appointment start/end times must align to 15-minute grid
+- **Variable Duration Appointments** — Appointment duration is not fixed to a slot duration
+
+## API Usage Examples
+
+### Create a Doctor
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/doctors \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Dr. John Doe", "email": "john.doe@example.com", "specialty": "Cardiology"}'
+```
+
+### Create a Patient
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/patients \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Jane Smith", "email": "jane.smith@example.com", "phone": "+36301234567"}'
+```
+
+### Create Availability
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/availabilities \
+  -H "Content-Type: application/json" \
+  -d '{"doctor_id": 1, "starts_at": "2026-10-15T09:00:00Z", "ends_at": "2026-10-15T12:00:00Z"}'
+```
+
+### List Available Slots
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/doctors/1/available-slots?from=2026-10-15T09:00:00Z&to=2026-10-15T12:00:00Z"
+```
+
+### Create Appointment (45 minutes)
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/appointments \
+  -H "Content-Type: application/json" \
+  -d '{"patient_id": 1, "doctor_id": 1, "start_time": "2026-10-15T09:15:00Z", "end_time": "2026-10-15T10:00:00Z"}'
+```
+
+### Confirm Appointment
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/v1/appointments/1/status \
+  -H "Content-Type: application/json" \
+  -d '{"status": "confirmed"}'
+```
+
+### Cancel Appointment
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/appointments/1/cancel \
+  -H "Content-Type: application/json" \
+  -d '{"cancellation_reason": "Patient could not make it"}'
+```
+
+### List Available Slots
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/doctors/1/available-slots?from=2026-10-15T09:00:00Z&to=2026-10-15T12:00:00Z"
+```
+
+### List Doctor's Appointments
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/doctors/1/appointments"
+```
+
+### List Patient's Appointments
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/patients/1/appointments"
+```
+
+### Pagination Example
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/doctors?page=2&per_page=25"
+```
+
+## Design Decisions
